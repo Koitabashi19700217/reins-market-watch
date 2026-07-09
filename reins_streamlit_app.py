@@ -123,7 +123,15 @@ with tab_national:
     title_ph.title(f"{category_n}成約状況 2026年5月度")
 
     ranking = market["nationalRanking"].get(category_n, [])
-    df = pd.DataFrame(ranking)
+    ranking_sorted = sorted(ranking, key=lambda r: r["priceYoy"], reverse=True)
+    top = ranking_sorted[:10]
+    present = {r["pref"] for r in top}
+    for hp in ["東京都", "神奈川県", "埼玉県", "千葉県"]:
+        if hp not in present:
+            found = next((r for r in ranking_sorted if r["pref"] == hp), None)
+            if found:
+                top.append(found)
+    df = pd.DataFrame(top)
     if not df.empty:
         df = df.sort_values("priceYoy", ascending=True)
         colors = [PREF_COLORS.get(p, GRAY) for p in df["pref"]]
