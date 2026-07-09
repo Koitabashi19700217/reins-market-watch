@@ -181,9 +181,10 @@ with tab_pref:
         if not series:
             continue
         fig2.add_trace(go.Scatter(
-            x=months, y=series, mode="lines", name=p,
-            line=dict(color=PREF_COLORS.get(p, GRAY), width=3 if p == selected_pref else 1.5),
-            opacity=1 if p == selected_pref else 0.35,
+            x=months, y=series, mode="lines+markers", name=p,
+            line=dict(color=PREF_COLORS.get(p, GRAY), width=5 if p == selected_pref else 2.5),
+            marker=dict(size=5 if p == selected_pref else 3),
+            opacity=1 if p == selected_pref else 0.6,
         ))
     ylabel = "㎡単価(万円)" if category_p == "中古マンション" else "成約価格(万円)"
     fig2.update_layout(title=f"{ylabel}推移 — 1都3県比較", height=340, margin=dict(l=10, r=10, t=40, b=10))
