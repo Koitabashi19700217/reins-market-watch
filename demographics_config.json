@@ -1,0 +1,26 @@
+{
+  "_comment": "年齢帯別の年収・貯蓄の仮定値(万円)。国税庁・民間給与実態統計調査/J-FLEC家計の金融行動に関する世論調査から概算。実データが取れ次第、随時更新すること。",
+  "_source": "国税庁 民間給与実態統計調査(令和6年分)、金融経済教育推進機構(J-FLEC) 家計の金融行動に関する世論調査(2025年)",
+  "ageProfiles": {
+    "20-24": { "income": 277, "savings": 151 },
+    "25-29": { "income": 407, "savings": 214 },
+    "30-34": { "income": 440, "savings": 500 },
+    "35-39": { "income": 480, "savings": 700 },
+    "40-44": { "income": 516, "savings": 850 },
+    "45-49": { "income": 540, "savings": 930 },
+    "50-54": { "income": 559, "savings": 1050 },
+    "55-59": { "income": 572, "savings": 1200 },
+    "60-64": { "income": 430, "savings": 1400 },
+    "65-69": { "income": 370, "savings": 1500 }
+  },
+  "defaultParams": {
+    "repaymentRatio": 25,
+    "interestRate": 3.13,
+    "years": 35,
+    "downPaymentRatio": 50,
+    "emergencyFundMonths": 6,
+    "takeHomeRatio": 0.78,
+    "livingCostRatio": 0.5,
+    "acquisitionFeeRatio": 0.07
+  }
+}

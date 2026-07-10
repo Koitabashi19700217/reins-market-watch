@@ -11,6 +11,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import parse_reins_pdf
 import parse_kanagawa_ward
+import calc_affordability
+import generate_report
 
 NAVY = "#1F3864"
 TEAL = "#0F6E56"
@@ -29,6 +31,15 @@ def load_default_data():
     ward_path = HERE / "reins_kanagawa_data.json"
     wards = json.loads(ward_path.read_text(encoding="utf-8"))["wards"] if ward_path.exists() else {}
     return market, wards
+
+
+@st.cache_data
+def load_customer_data():
+    migration_path = HERE / "reins_migration_data.json"
+    demo_path = HERE / "demographics_config.json"
+    migration = json.loads(migration_path.read_text(encoding="utf-8")) if migration_path.exists() else {}
+    demo = json.loads(demo_path.read_text(encoding="utf-8")) if demo_path.exists() else None
+    return migration, demo
 
 
 @st.cache_data(show_spinner="PDFを解析しています…")
@@ -99,6 +110,7 @@ with st.sidebar:
 
 market = st.session_state.market
 wards = st.session_state.wards
+migration, demo = load_customer_data()
 
 st.markdown(
     """
@@ -113,7 +125,7 @@ st.markdown(
 st.caption("REINS MARKET WATCH")
 title_ph = st.empty()
 
-tab_national, tab_pref = st.tabs(["全国", "都道府県"])
+tab_national, tab_pref, tab_customer = st.tabs(["全国", "都道府県", "客層分析"])
 
 CATEGORIES = list(market["priceBandsByCategory"].keys())  # 中古マンション / 戸建 / 土地
 
@@ -245,3 +257,70 @@ with tab_pref:
                 if t:
                     st.markdown(f"**{selected_ward}・{category_p} {label}**")
                     st.dataframe(pd.DataFrame(t["rows"], columns=t["headers"]), use_container_width=True, hide_index=True)
+
+# ---------------------------------------------------------------- 客層分析 tab
+with tab_customer:
+    if not demo or not migration or not wards:
+        st.info("客層分析には demographics_config.json / reins_migration_data.json / reins_kanagawa_data.json が必要です。")
+    else:
+        cust_category = st.radio("カテゴリ", ["中古マンション", "戸建", "土地"], horizontal=True, key="cust_category")
+        available_wards = [w for w in wards if w in migration]
+        cust_ward = st.selectbox("区", available_wards, key="cust_ward")
+
+        params = dict(demo["defaultParams"])
+        with st.expander("試算の前提を調整"):
+            c1, c2, c3, c4 = st.columns(4)
+            params["repaymentRatio"] = c1.slider("返済負担率(%)", 15, 35, int(params["repaymentRatio"]))
+            params["interestRate"] = c2.slider("金利(%)", 0.5, 4.0, float(params["interestRate"]), 0.01)
+            params["downPaymentRatio"] = c3.slider("頭金充当率(%)", 0, 100, int(params["downPaymentRatio"]), 5)
+            params["years"] = c4.slider("返済年数", 20, 35, int(params["years"]))
+
+        age_rows = []
+        for age in demo["ageProfiles"]:
+            if age not in migration.get(cust_ward, {}).get("byAge", {}):
+                continue
+            r = calc_affordability.analyze(cust_ward, age, demo, migration, wards, params)
+            age_rows.append(r)
+
+        if age_rows:
+            df = pd.DataFrame([{
+                "年齢帯": r["age"], "転入超過数": r["netMigration"],
+                "購入可能額(万円)": r["purchasePower"],
+                f"{cust_category}届く割合(%)": r["affordableCoverage"].get(cust_category),
+            } for r in age_rows])
+
+            col1, col2 = st.columns(2)
+            with col1:
+                fig = go.Figure(go.Bar(
+                    x=df["年齢帯"], y=df["転入超過数"],
+                    marker_color=[TEAL if v >= 0 else CORAL for v in df["転入超過数"]],
+                ))
+                fig.update_layout(title=f"{cust_ward} 年齢帯別 転入超過数", height=300, margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                fig2 = go.Figure(go.Bar(
+                    x=df["年齢帯"], y=df[f"{cust_category}届く割合(%)"], marker_color=NAVY,
+                ))
+                fig2.update_layout(title=f"{cust_ward}・{cust_category} 届く物件割合(%)", height=300, margin=dict(l=10, r=10, t=40, b=10))
+                st.plotly_chart(fig2, use_container_width=True)
+
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # --- 全区横断の自動レポート ---
+            st.markdown("---")
+            st.markdown("**自動分析レポート(全区横断)**")
+            report_rows = []
+            for w in available_wards:
+                for age in demo["ageProfiles"]:
+                    if age not in migration.get(w, {}).get("byAge", {}):
+                        continue
+                    r = calc_affordability.analyze(w, age, demo, migration, wards, params)
+                    report_rows.append({
+                        "区": r["ward"], "年齢帯": r["age"],
+                        "年収(万円)": r["income"], "貯蓄(万円)": r["savings"],
+                        "購入可能額(万円)": r["purchasePower"], "転入超過数": r["netMigration"],
+                        **{f"{c}届く割合(%)": r["affordableCoverage"].get(c) for c in ["中古マンション", "戸建", "土地"]},
+                    })
+            report_md = generate_report.build_report(report_rows, cust_category)
+            st.markdown(report_md)
+            st.download_button("レポートをMarkdownでダウンロード", data=report_md, file_name="customer_analysis_report.md", mime="text/markdown")
