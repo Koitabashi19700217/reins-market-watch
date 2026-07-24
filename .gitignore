@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+reins_history.db
+reins_history.db.bak.*
+*.db-journal
