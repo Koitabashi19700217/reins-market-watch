@@ -1,0 +1,16 @@
+{
+  "_comment": "APIデータ取得対象の定義。bboxは[lon_min, lat_min, lon_max, lat_max]。広めに取ってあり、レスポンスの市区町村コードで絞り込むので多少はみ出しても問題ない。",
+  "wards": [
+    { "name": "鶴見区",   "code": "14101", "bbox": [139.62, 35.44, 139.72, 35.55] },
+    { "name": "神奈川区", "code": "14102", "bbox": [139.56, 35.45, 139.66, 35.52] },
+    { "name": "港北区",   "code": "14109", "bbox": [139.58, 35.49, 139.68, 35.58] },
+    { "name": "都筑区",   "code": "14118", "bbox": [139.54, 35.51, 139.63, 35.60] }
+  ],
+  "transactions": { "year_from": 2021, "year_to": 2026, "price_classification": null },
+  "land_price":   { "year_from": 2021, "year_to": 2025, "zoom": 13 },
+  "city_planning": { "zoom": 13 },
+  "estat": {
+    "stats_code": "00200241",
+    "area_codes": ["14101", "14102", "14109", "14118"]
+  }
+}
